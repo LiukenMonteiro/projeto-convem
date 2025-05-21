@@ -1,10 +1,8 @@
-import { GetCommand, PutCommand, UpdateCommand } from "@aws-sdk/lib-dynamodb";
-import { docClient, PIX_QR_CODES_TABLE } from "../config/aws";
+import { GetCommand, PutCommand, ScanCommand, UpdateCommand } from "@aws-sdk/lib-dynamodb";
+import { docClient, PIX_CASH_OUT_TABLE, PIX_QR_CODES_TABLE } from "../config/aws";
 import { PixQRCode } from "../models/PixCashOut";
 
-
-
-//metodos do pix
+//metodos do pixQRCOde
 export class DynamoDBService {
     async createdPixQRCode(qrCode: PixQRCode): Promise<void> {
         const command = new PutCommand({
@@ -44,4 +42,16 @@ export class DynamoDBService {
 
         await docClient.send(command);
     }
+
+    async listPixQRCodes(): Promise<PixQRCode[]> { //chama lista dos qrCodes
+        const command = new ScanCommand({
+            TableName: PIX_QR_CODES_TABLE
+        });
+
+        const response = await docClient.send(command);
+        return (response.Items || []) as PixQRCode[];
+    }
+
+    //metodos do PixCashOut
+    
 }

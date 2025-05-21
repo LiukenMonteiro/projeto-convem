@@ -1,6 +1,7 @@
 import { GetCommand, PutCommand, ScanCommand, UpdateCommand } from "@aws-sdk/lib-dynamodb";
 import { docClient, PIX_CASH_OUT_TABLE, PIX_QR_CODES_TABLE } from "../config/aws";
-import { PixQRCode } from "../models/PixCashOut";
+import { PixQRCode } from "../models/PixQRCode";
+import { PixCashOut } from "../models/PixCashOut";
 
 //metodos do pixQRCOde
 export class DynamoDBService {
@@ -53,5 +54,15 @@ export class DynamoDBService {
     }
 
     //metodos do PixCashOut
-    
+
+    async createdPixCashOut(cashOut: PixCashOut): Promise<void> {
+        const command = new PutCommand({
+            TableName: PIX_CASH_OUT_TABLE,
+            Item: cashOut
+        });
+
+        await docClient.send(command)
+    }
+
+    //metodos de listar as transaçoẽs
 }

@@ -1,4 +1,4 @@
-export interface PixQRCode {
+export interface PixCashOut {
     id: string;
     value : number;
     pixKey: string;

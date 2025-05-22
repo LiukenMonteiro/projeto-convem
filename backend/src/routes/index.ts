@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router } from 'express';
 import pixRoutes from './pixRoutes';
 import webhookRoutes from './webhookRoutes'
 import * as pixController from '../controllers/pixController'

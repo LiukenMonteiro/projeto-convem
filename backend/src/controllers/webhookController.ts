@@ -1,4 +1,4 @@
-import { CASH_IN_QUEUE_URL } from "../config/aws";
+import { CASH_IN_QUEUE_URL, CASH_OUT_QUEUE_URL } from "../config/aws";
 import { DynamoDBService } from "../services/dynamoDBService";
 import { SQSService } from "../services/sqsService";
 import { Request, Response } from "express";
@@ -29,7 +29,7 @@ export const receiveCashOutWebhook = async (req: Request, res: Response): Promis
 
     console.log('Webhook do Cash out recebido:', JSON.stringify(webhook)); // tipo cash out?
 
-    await sqsService.sendMessage(CASH_IN_QUEUE_URL, webhook); //enviando para a fila SQS
+    await sqsService.sendMessage(CASH_OUT_QUEUE_URL, webhook); //enviando para a fila SQS
 
     res.status(200).json({ message: 'Webhook Cash out recebido e enviado para processamento' });
   } catch (error) {

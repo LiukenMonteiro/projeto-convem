@@ -75,10 +75,45 @@ export const generatePixQRCode = async (req: Request, res: Response): Promise<vo
             description: 'Saque Pix via API Convem',
             createdAt: new Date().toISOString()
         };
-     await dynamoDBService.createPixCashOut(cashOut);
+        // Salvar o saque no DynamoDB
+        await dynamoDBService.createPixCashOut(cashOut);
+
         res.status(201).json(cashOut);
     } catch (error) {
         console.error('Erro ao solicitar saque:', error);
         res.status(500).json({ error: 'Erro ao solicitar saque Pix' });
  }
+};
+
+// Listar os QR Codes
+export const listPixQRCodes = async (_req: Request, res: Response): Promise<void> => {
+    try {
+        const qrCodes = await dynamoDBService.listPixQRCodes();
+        res.status(200).json({ qrCodes });
+    } catch (error) {
+        console.error('Erro ao listar QR Codes:', error);
+        res.status(500).json({ error: 'Erro ao listar QR Codes' });
+    }
+};
+
+// Listar os saques
+export const listPixCashOuts = async (_req: Request, res: Response): Promise<void> => {
+    try {
+        const cashOuts = await dynamoDBService.listPixCashOuts();
+        res.status(200).json({ cashOuts });
+    } catch (error) {
+        console.error('Erro ao listar saques:', error);
+        res.status(500).json({ error: 'Erro ao listar saques' });
+    }
+};
+
+// Listar toas as transações    
+export const listPixTransactions = async (_req: Request, res: Response): Promise<void> => {
+    try {
+        const transactions = await dynamoDBService.listTransactions();
+        res.status(200).json({ transactions });
+    } catch (error) {
+        console.error('Erro ao listar transações:', error);
+        res.status(500).json({ error: 'Erro ao listar transações' });
+    }
 };

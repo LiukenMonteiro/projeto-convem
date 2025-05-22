@@ -108,7 +108,7 @@ export const listPixCashOuts = async (_req: Request, res: Response): Promise<voi
 };
 
 // Listar toas as transações    
-export const listPixTransactions = async (_req: Request, res: Response): Promise<void> => {
+export const listTransactions = async (_req: Request, res: Response): Promise<void> => {
     try {
         const transactions = await dynamoDBService.listTransactions();
         res.status(200).json({ transactions });

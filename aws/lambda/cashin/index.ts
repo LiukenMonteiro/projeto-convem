@@ -43,7 +43,7 @@ export const handler: SQSHandler = async (event: SQSEvent) => {
         console.log(`Atualizando status de pagamento para ${body.payment.id} para ${status}`);
         
     } catch (error) {
-        console.error('Erro ao processar mensagem', error);
+        console.error('Erro ao processar mensagem SQS', error);
     }
 }
     

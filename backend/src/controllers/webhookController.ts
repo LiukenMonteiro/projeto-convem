@@ -1,39 +1,39 @@
-import { CASH_IN_QUEUE_URL, CASH_OUT_QUEUE_URL } from "../config/aws";
-import { DynamoDBService } from "../services/dynamoDBService";
-import { SQSService } from "../services/sqsService";
-import { Request, Response } from "express";
+import { Request, Response } from 'express';
 
-const dynamoDBService = new DynamoDBService();
-const sqsService = new SQSService();
-
-//webhook do cash in (recebendo dinheiro)
+// Receber webhook de cash in
 export const receiveCashInWebhook = async (req: Request, res: Response): Promise<void> => {
   try {
     const webhook = req.body;
-
-    console.log('Webhook do Cash in recebido:', JSON.stringify(webhook)); // tipo cash in?
-
-    await sqsService.sendMessage(CASH_IN_QUEUE_URL, webhook); //enviando para a fila SQS
-
-    res.status(200).json({ message: 'Webhook Cash in recebido e enviado para processamento' });
+    
+    console.log('🔔 Webhook de Cash In recebido (mock):', JSON.stringify(webhook));
+    
+    // Simular processamento
+    setTimeout(() => {
+      console.log('✅ Webhook de Cash In processado (mock)');
+    }, 1000);
+    
+    res.status(200).json({ message: 'Webhook recebido e enviado para processamento' });
   } catch (error) {
-    console.log('Erro ao processar o webhook do cash in:', error);
-    res.status(500).json({ error: 'Erro ao processar o webhook do cash in' });
+    console.error('❌ Erro ao processar webhook de cash in:', error);
+    res.status(500).json({ error: 'Erro ao processar webhook' });
   }
 };
 
-//webhook do cash out (sacando dinheiro)
+// Receber webhook de cash out
 export const receiveCashOutWebhook = async (req: Request, res: Response): Promise<void> => {
   try {
     const webhook = req.body;
-
-    console.log('Webhook do Cash out recebido:', JSON.stringify(webhook)); // tipo cash out?
-
-    await sqsService.sendMessage(CASH_OUT_QUEUE_URL, webhook); //enviando para a fila SQS
-
-    res.status(200).json({ message: 'Webhook Cash out recebido e enviado para processamento' });
+    
+    console.log('🔔 Webhook de Cash Out recebido (mock):', JSON.stringify(webhook));
+    
+    // Simular processamento
+    setTimeout(() => {
+      console.log('✅ Webhook de Cash Out processado (mock)');
+    }, 1000);
+    
+    res.status(200).json({ message: 'Webhook recebido e enviado para processamento' });
   } catch (error) {
-    console.log('Erro ao processar o webhook do cash out:', error);
-    res.status(500).json({ error: 'Erro ao processar o webhook do cash out' });
+    console.error('❌ Erro ao processar webhook de cash out:', error);
+    res.status(500).json({ error: 'Erro ao processar webhook' });
   }
 };

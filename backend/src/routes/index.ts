@@ -14,10 +14,10 @@ router.get('/', (req, res) => {
 });
 
 //rotas para pix
-router.use('pix', pixRoutes);
+router.use('/pix', pixRoutes);
 //rotas para os webhooks
 router.use('/webhook', webhookRoutes);
 //rotas de todas as transações
-router.use('/transactions', pixController.listTransactions);
+router.get('/transactions', pixController.listTransactions);
 
 export default router;

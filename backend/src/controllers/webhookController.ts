@@ -1,16 +1,20 @@
 import { Request, Response } from 'express';
+import { SQSService } from '../services/sqsService';
+import { CASH_IN_QUEUE_URL, CASH_OUT_QUEUE_URL } from '../config/aws';
+
+const sqsService = new SQSService();
 
 // Receber webhook de cash in
 export const receiveCashInWebhook = async (req: Request, res: Response): Promise<void> => {
   try {
     const webhook = req.body;
     
-    console.log('🔔 Webhook de Cash In recebido (mock):', JSON.stringify(webhook));
+    console.log('🔔 Webhook de Cash In recebido:', JSON.stringify(webhook));
     
-    // Simular processamento
-    setTimeout(() => {
-      console.log('✅ Webhook de Cash In processado (mock)');
-    }, 1000);
+    // Enviar para a fila SQS REAL
+    await sqsService.sendMessage(CASH_IN_QUEUE_URL, webhook);
+    
+    console.log('✅ Webhook enviado para SQS Cash In');
     
     res.status(200).json({ message: 'Webhook recebido e enviado para processamento' });
   } catch (error) {
@@ -24,12 +28,12 @@ export const receiveCashOutWebhook = async (req: Request, res: Response): Promis
   try {
     const webhook = req.body;
     
-    console.log('🔔 Webhook de Cash Out recebido (mock):', JSON.stringify(webhook));
+    console.log('🔔 Webhook de Cash Out recebido:', JSON.stringify(webhook));
     
-    // Simular processamento
-    setTimeout(() => {
-      console.log('✅ Webhook de Cash Out processado (mock)');
-    }, 1000);
+    // Enviar para a fila SQS REAL
+    await sqsService.sendMessage(CASH_OUT_QUEUE_URL, webhook);
+    
+    console.log('✅ Webhook enviado para SQS Cash Out');
     
     res.status(200).json({ message: 'Webhook recebido e enviado para processamento' });
   } catch (error) {

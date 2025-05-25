@@ -1,94 +1,46 @@
 import { Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
+import { DynamoDBService } from '../services/dynamoDBService';
+import { AsaasService } from '../services/asaasService';
+import { PixQRCode } from '../models/PixQRCode';
+import { PixCashOut } from '../models/PixCashOut';
 
-// Interfaces
-interface PixQRCode {
-  id: string;
-  value: number;
-  qrCodeImage: string;
-  qrCodeText: string;
-  status: 'PENDING' | 'CONFIRMED' | 'FAILED';
-  asaasId: string;
-  description?: string;
-  createdAt: string;
-  processedAt?: string;
-}
-
-interface PixCashOut {
-  id: string;
-  value: number;
-  pixKey: string;
-  pixKeyType: 'CPF' | 'EMAIL' | 'PHONE' | 'EVP';
-  status: 'PENDING' | 'CONFIRMED' | 'FAILED';
-  asaasId: string;
-  description?: string;
-  createdAt: string;
-  processedAt?: string;
-}
-
-// Armazenamento em memória (substitui o DynamoDB)
-const qrCodes: PixQRCode[] = [];
-const cashOuts: PixCashOut[] = [];
-
-// Mock do serviço Asaas
-const mockAsaasService = {
-  async generatePixQRCode(value: number, description: string) {
-    console.log('🟡 Gerando QR Code Pix (mock):', { value, description });
-    
-    return {
-      id: uuidv4(),
-      value,
-      encodedImage: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
-      payload: `00020126580014BR.GOV.BCB.PIX0136${uuidv4()}520400005303986540${value.toFixed(2)}5802BR5913Mock Company6009SAO PAULO62070503***6304`,
-      description
-    };
-  },
-
-  async requestCashOut(value: number, pixKey: string, pixKeyType: string, description: string) {
-    console.log('🟡 Solicitando saque Pix (mock):', { value, pixKey, pixKeyType, description });
-    
-    return {
-      id: uuidv4(),
-      value,
-      pixKey,
-      pixKeyType,
-      status: 'PENDING',
-      description
-    };
-  }
-};
+const dynamoDBService = new DynamoDBService();
+const asaasService = new AsaasService();
 
 // Gerar QR Code Pix
+// Gerar QR Code Pix (versão corrigida)
 export const generatePixQRCode = async (req: Request, res: Response): Promise<void> => {
   try {
     const { value, description } = req.body;
 
-    console.log('📥 Recebendo solicitação de QR Code:', { value, description });
+    console.log('📥 Recebendo solicitação de QR Code (AWS DynamoDB):', { value, description });
 
-    if (!value || typeof value !== 'number' || value <= 0) {
-      res.status(400).json({ error: 'O valor é obrigatório e deve ser maior que zero' });
+    // Validação mais rigorosa
+    if (!value || typeof value !== 'number' || value <= 0 || isNaN(value)) {
+      res.status(400).json({ error: 'O valor é obrigatório e deve ser um número válido maior que zero' });
       return;
     }
 
-    // Chamar mock do Asaas
-    const asaasResponse = await mockAsaasService.generatePixQRCode(value, description || 'Depósito Pix');
+    // Chamar a API do Asaas para gerar o QR Code
+    const asaasResponse = await asaasService.generatePixQRCode(value, description || 'Depósito Pix');
 
-    // Criar o registro
+    // Criar o registro com validações
     const qrCode: PixQRCode = {
       id: uuidv4(),
-      value,
-      qrCodeImage: asaasResponse.encodedImage,
-      qrCodeText: asaasResponse.payload,
+      value: parseFloat(value.toString()), // Garantir que é número
+      qrCodeImage: asaasResponse.encodedImage || '',
+      qrCodeText: asaasResponse.payload || '',
       status: 'PENDING',
-      asaasId: asaasResponse.id,
-      description: description,
+      asaasId: asaasResponse.id || uuidv4(),
+      description: description || 'Depósito Pix',
       createdAt: new Date().toISOString()
     };
 
-    // Salvar em memória
-    qrCodes.push(qrCode);
+    // Salvar no DynamoDB REAL
+    await dynamoDBService.createPixQRCode(qrCode);
 
-    console.log('✅ QR Code criado com sucesso:', qrCode.id);
+    console.log('✅ QR Code criado com sucesso no DynamoDB:', qrCode.id);
 
     res.status(201).json(qrCode);
   } catch (error) {
@@ -102,7 +54,7 @@ export const requestCashOut = async (req: Request, res: Response): Promise<void>
   try {
     const { value, pixKey, pixKeyType } = req.body;
 
-    console.log('📥 Recebendo solicitação de saque:', { value, pixKey, pixKeyType });
+    console.log('📥 Recebendo solicitação de saque (AWS DynamoDB):', { value, pixKey, pixKeyType });
 
     if (!value || typeof value !== 'number' || value <= 0) {
       res.status(400).json({ error: 'O valor é obrigatório e deve ser maior que zero' });
@@ -114,8 +66,8 @@ export const requestCashOut = async (req: Request, res: Response): Promise<void>
       return;
     }
 
-    // Chamar mock do Asaas
-    const asaasResponse = await mockAsaasService.requestCashOut(
+    // Chamar a API do Asaas para solicitar o saque (ainda mock)
+    const asaasResponse = await asaasService.requestCashOut(
       value, 
       pixKey, 
       pixKeyType, 
@@ -134,10 +86,10 @@ export const requestCashOut = async (req: Request, res: Response): Promise<void>
       createdAt: new Date().toISOString()
     };
 
-    // Salvar em memória
-    cashOuts.push(cashOut);
+    // Salvar no DynamoDB REAL
+    await dynamoDBService.createPixCashOut(cashOut);
 
-    console.log('✅ Saque criado com sucesso:', cashOut.id);
+    console.log('✅ Saque criado com sucesso no DynamoDB:', cashOut.id);
 
     res.status(201).json(cashOut);
   } catch (error) {
@@ -149,7 +101,8 @@ export const requestCashOut = async (req: Request, res: Response): Promise<void>
 // Listar QR Codes
 export const listPixQRCodes = async (_req: Request, res: Response): Promise<void> => {
   try {
-    console.log('📋 Listando QR Codes. Total:', qrCodes.length);
+    const qrCodes = await dynamoDBService.listPixQRCodes();
+    console.log('📋 Listando QR Codes do DynamoDB. Total:', qrCodes.length);
     res.status(200).json({ qrCodes });
   } catch (error) {
     console.error('❌ Erro ao listar QR Codes:', error);
@@ -160,7 +113,8 @@ export const listPixQRCodes = async (_req: Request, res: Response): Promise<void
 // Listar saques
 export const listPixCashOuts = async (_req: Request, res: Response): Promise<void> => {
   try {
-    console.log('📋 Listando saques. Total:', cashOuts.length);
+    const cashOuts = await dynamoDBService.listPixCashOuts();
+    console.log('📋 Listando saques do DynamoDB. Total:', cashOuts.length);
     res.status(200).json({ cashOuts });
   } catch (error) {
     console.error('❌ Erro ao listar saques:', error);
@@ -171,29 +125,21 @@ export const listPixCashOuts = async (_req: Request, res: Response): Promise<voi
 // Listar todas as transações
 export const listTransactions = async (_req: Request, res: Response): Promise<void> => {
   try {
-    const transactions = [
-      ...qrCodes.map(qr => ({
-        id: qr.id,
-        value: qr.value,
-        status: qr.status,
-        type: 'cashin',
-        createdAt: qr.createdAt,
-        processedAt: qr.processedAt
-      })),
-      ...cashOuts.map(co => ({
-        id: co.id,
-        value: co.value,
-        status: co.status,
-        type: 'cashout',
-        createdAt: co.createdAt,
-        processedAt: co.processedAt
-      }))
-    ];
-
-    console.log('📋 Listando transações. Total:', transactions.length);
+    const transactions = await dynamoDBService.listTransactions();
+    console.log('📋 Listando transações do DynamoDB. Total:', transactions.length);
     res.status(200).json({ transactions });
   } catch (error) {
     console.error('❌ Erro ao listar transações:', error);
     res.status(500).json({ error: 'Erro ao listar transações' });
+  }
+};
+
+// Testar conexão com Asaas
+export const testAsaas = async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const result = await asaasService.testConnection();
+    res.status(200).json({ message: 'Asaas funcionando', data: result });
+  } catch (error) {
+    res.status(500).json({ error: 'Erro no Asaas', details: error });
   }
 };

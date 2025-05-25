@@ -5,6 +5,6 @@ const router = Router();
 
 // Rotas WebHooks
 router.post('/cashin', webhookController.receiveCashInWebhook);
-router.post('cashout', webhookController.receiveCashOutWebhook);
+router.post('/cashout', webhookController.receiveCashOutWebhook);
 
 export default router;

@@ -19,5 +19,7 @@ router.use('/pix', pixRoutes);
 router.use('/webhook', webhookRoutes);
 //rotas de todas as transações
 router.get('/transactions', pixController.listTransactions);
+//rota de teste pro Asaas
+router.get('/test/asaas', pixController.testAsaas);
 
 export default router;

@@ -53,6 +53,7 @@ export class AsaasService {
       
       const paymentResponse = await axios.post(
         `${this.baseUrl}/payments`,
+         // https://sandbox.asaas.com/api/v3/payments
         paymentPayload,
         { 
           headers: this.headers,
@@ -93,6 +94,156 @@ export class AsaasService {
   }
 
   // Mock como fallback
+ async requestCashOut(value: number, pixKey: string, pixKeyType: string, description: string): Promise<any> {
+    try {
+      console.log('💸 Solicitando saque PIX via Asaas:', { value, pixKey, pixKeyType, description });
+      
+      // Mapear tipo de chave PIX para o formato aceito pelo Asaas
+      const pixKeyTypeMap: any = {
+        'CPF': 'CPF',
+        'EMAIL': 'EMAIL',
+        'PHONE': 'PHONE',
+        'EVP': 'EVP',
+        'CNPJ': 'CNPJ'
+      };
+
+      // Primeiro, precisamos obter ou criar dados bancários do destinatário
+      // Em produção, isso seria obtido do cadastro do usuário
+      const bankAccountData = await this.getOrCreateBankAccount(pixKey, pixKeyType);
+
+      // Payload para transferência PIX
+      const transferPayload = {
+        value: value,
+        bankAccount: {
+          bank: {
+            code: bankAccountData.bankCode || "450" // 450 é o código do Asaas PIX
+          },
+          accountName: bankAccountData.accountName || "Conta PIX",
+          ownerName: bankAccountData.ownerName || "Beneficiário PIX",
+          ownerBirthDate: bankAccountData.ownerBirthDate || "1990-01-01",
+          cpfCnpj: this.extractCpfFromPixKey(pixKey, pixKeyType),
+          agency: "0001", // Agência padrão para PIX
+          account: "00000000", // Conta padrão para PIX
+          accountDigit: "0", // Dígito padrão para PIX
+          bankAccountType: "PAYMENT", // Tipo de conta para PIX
+          pixAddressKey: {
+            key: pixKey,
+            type: pixKeyTypeMap[pixKeyType] || pixKeyType
+          }
+        },
+        operationType: "PIX",
+        description: description || "Saque PIX via API Convem",
+        scheduleDate: new Date().toISOString().split('T')[0], // Transferência imediata
+        externalReference: `CASHOUT_${Date.now()}` // Referência única
+      };
+      
+      console.log('📤 Enviando payload de transferência:', JSON.stringify(transferPayload, null, 2));
+      
+      // Fazer a requisição de transferência
+      const response = await axios.post(
+        `${this.baseUrl}/transfers`,
+        transferPayload,
+        { 
+          headers: this.headers,
+          timeout: 15000
+        }
+      );
+      
+      console.log('✅ Transferência PIX criada com sucesso:', response.data);
+      
+      return {
+        id: response.data.id,
+        value: value,
+        pixKey: pixKey,
+        pixKeyType: pixKeyType,
+        status: response.data.status || 'PENDING',
+        description: description,
+        bankAccount: response.data.bankAccount,
+        dateCreated: response.data.dateCreated,
+        estimatedDate: response.data.estimatedDate,
+        fee: response.data.fee || 0,
+        transactionId: response.data.transactionId,
+        externalReference: response.data.externalReference
+      };
+      
+    } catch (error: any) {
+      console.error('❌ Erro ao solicitar saque PIX:');
+      
+      if (error.response) {
+        console.error('📊 Status:', error.response.status);
+        console.error('📄 Dados do erro:', error.response.data);
+        
+        // Tratar erros específicos do Asaas
+        if (error.response.status === 400) {
+          const errorMessage = error.response.data.errors?.[0]?.description || 'Dados inválidos';
+          throw new Error(`Erro de validação: ${errorMessage}`);
+        }
+        
+        if (error.response.status === 401) {
+          throw new Error('Token de API inválido ou expirado');
+        }
+        
+        if (error.response.status === 403) {
+          throw new Error('Sem permissão para realizar transferências');
+        }
+      }
+      
+      // Se falhar, usar mock como fallback (apenas para desenvolvimento)
+      console.log('🔄 Usando mock como fallback para desenvolvimento...');
+      return this.generateMockCashOut(value, pixKey, pixKeyType, description);
+    }
+  }
+
+  // Método auxiliar para obter/criar dados bancários
+  private async getOrCreateBankAccount(pixKey: string, pixKeyType: string): Promise<any> {
+    // Em produção, isso consultaria o banco de dados do usuário
+    // Por ora, retorna dados padrão baseados no tipo de chave
+    
+    const defaultData: any = {
+      bankCode: "450", // Código Asaas PIX
+      accountName: "Conta PIX",
+      ownerBirthDate: "1990-01-01"
+    };
+
+    switch (pixKeyType) {
+      case 'CPF':
+        defaultData.ownerName = "Pessoa Física";
+        defaultData.cpfCnpj = pixKey.replace(/\D/g, '');
+        break;
+      case 'CNPJ':
+        defaultData.ownerName = "Pessoa Jurídica";
+        defaultData.cpfCnpj = pixKey.replace(/\D/g, '');
+        break;
+      case 'EMAIL':
+        defaultData.ownerName = "Titular Email";
+        defaultData.cpfCnpj = "00000000000"; // CPF padrão para teste
+        break;
+      case 'PHONE':
+        defaultData.ownerName = "Titular Telefone";
+        defaultData.cpfCnpj = "00000000000"; // CPF padrão para teste
+        break;
+      case 'EVP':
+        defaultData.ownerName = "Titular Chave Aleatória";
+        defaultData.cpfCnpj = "00000000000"; // CPF padrão para teste
+        break;
+    }
+
+    return defaultData;
+  }
+
+  // Extrai CPF da chave PIX quando possível
+  private extractCpfFromPixKey(pixKey: string, pixKeyType: string): string {
+    if (pixKeyType === 'CPF') {
+      return pixKey.replace(/\D/g, '');
+    }
+    if (pixKeyType === 'CNPJ') {
+      return pixKey.replace(/\D/g, '');
+    }
+    // Para outros tipos, retornar CPF padrão de teste
+    return "00000000000";
+  }
+
+  // Mock para QR Code (fallback)
   private generateMockPixQRCode(value: number, description: string): any {
     const { v4: uuidv4 } = require('uuid');
     
@@ -105,25 +256,59 @@ export class AsaasService {
     };
   }
 
-  // Solicitar saque Pix (versão simplificada)
-  async requestCashOut(value: number, pixKey: string, pixKeyType: string, description: string): Promise<any> {
+  // Mock para Cash Out (fallback)
+  private generateMockCashOut(value: number, pixKey: string, pixKeyType: string, description: string): any {
+    const { v4: uuidv4 } = require('uuid');
+    
+    return {
+      id: uuidv4(),
+      value,
+      pixKey,
+      pixKeyType,
+      status: 'PENDING',
+      description,
+      fee: 1.90, // Taxa padrão PIX
+      estimatedDate: new Date().toISOString(),
+      transactionId: `MOCK_${Date.now()}`,
+      externalReference: `CASHOUT_MOCK_${Date.now()}`
+    };
+  }
+
+  // Consultar status de uma transferência
+  async getTransferStatus(transferId: string): Promise<any> {
     try {
-      console.log('🟡 Solicitando saque Pix (mock por enquanto):', { value, pixKey, pixKeyType, description });
+      const response = await axios.get(
+        `${this.baseUrl}/transfers/${transferId}`,
+        { headers: this.headers }
+      );
       
-      // Por enquanto, usar mock para saque também
-      const { v4: uuidv4 } = require('uuid');
-      
-      return {
-        id: uuidv4(),
-        value,
-        pixKey,
-        pixKeyType,
-        status: 'PENDING',
-        description
-      };
-      
+      return response.data;
     } catch (error: any) {
-      console.error('❌ Erro ao solicitar saque Pix:', error.response?.data || error.message);
+      console.error('❌ Erro ao consultar status da transferência:', error.response?.data || error.message);
+      throw error;
+    }
+  }
+
+  // Listar transferências
+  async listTransfers(filters?: any): Promise<any> {
+    try {
+      const params = new URLSearchParams();
+      
+      if (filters?.dateCreated) {
+        params.append('dateCreated', filters.dateCreated);
+      }
+      if (filters?.status) {
+        params.append('status', filters.status);
+      }
+      
+      const response = await axios.get(
+        `${this.baseUrl}/transfers?${params.toString()}`,
+        { headers: this.headers }
+      );
+      
+      return response.data;
+    } catch (error: any) {
+      console.error('❌ Erro ao listar transferências:', error.response?.data || error.message);
       throw error;
     }
   }

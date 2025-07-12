@@ -57,7 +57,7 @@ npm install
 # Voltar ao diretório raiz
 cd ..
 
-//=============================================================================//
+//============================================================================= //
 ### 3. Configuração AWS
 # Criar recursos AWS
 ./aws/create-resources.sh
@@ -142,5 +142,3 @@ GET    /transactions       # Listar todas as transações
                        │ Lambda Functions│
                        │                 │
                        └─────────────────┘
-
-                       

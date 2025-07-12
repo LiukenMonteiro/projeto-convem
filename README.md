@@ -108,7 +108,7 @@ node generate-cashouts.js
 ✅ Interface responsiva
 
 🔧 API Endpoints
-
+<!-- https://sandbox.asaas.com/api/v3/ -->
 GET    /                    # Status da API
 POST   /pix/qrcode         # Gerar QR Code Pix
 GET    /pix/qrcodes        # Listar QR Codes
@@ -142,3 +142,39 @@ GET    /transactions       # Listar todas as transações
                        │ Lambda Functions│
                        │                 │
                        └─────────────────┘
+
+Filas Criadas:
+cash-in-queue: Processa webhooks de pagamentos recebidos
+cash-out-queue: Processa webhooks de transferências realizadas
+
+🔄 Fluxos de Trabalho
+ Fluxo Completo - Cash In
+1. Cliente solicita QR Code
+   └─▶ API cria no Asaas
+       └─▶ Salva no DynamoDB com status "PENDING"
+
+2. Cliente paga o PIX
+   └─▶ Asaas detecta pagamento
+       └─▶ Asaas envia webhook
+           └─▶ API recebe webhook
+               └─▶ Envia para SQS
+
+3. Lambda processa fila SQS
+   └─▶ Lê mensagem da fila
+       └─▶ Extrai asaasId
+           └─▶ Atualiza DynamoDB para "CONFIRMED"
+🔄 Fluxo Completo - Cash Out
+1. Cliente solicita saque
+   └─▶ API cria transferência no Asaas
+       └─▶ Salva no DynamoDB com status "PENDING"
+
+2. Asaas processa transferência
+   └─▶ Transferência concluída
+       └─▶ Asaas envia webhook
+           └─▶ API recebe webhook
+               └─▶ Envia para SQS
+
+3. Lambda processa fila SQS
+   └─▶ Lê mensagem da fila
+       └─▶ Extrai asaasId
+           └─▶ Atualiza DynamoDB para "CONFIRMED"

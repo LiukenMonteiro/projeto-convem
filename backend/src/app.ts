@@ -6,7 +6,7 @@ const app = express();
 
 //Middlewares
 app.use(express.json());
-app.use(cors());
+app.use(cors()); // é um mecanismo de segurança implementado nos navegadores para controlar o acesso a recursos de diferentes origens
 
 //rotas
 app.use(routes);

@@ -8,5 +8,5 @@ const ASAAS_BASE_URL = process.env.ASAAS_BASE_URL || 'https://sandbox.asaas.com/
 
 export {
     ASAAS_API_KEY,
-    ASAAS_BASE_URL
+    ASAAS_BASE_URL 
 }

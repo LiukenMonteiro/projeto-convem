@@ -27,7 +27,7 @@ export const generatePixQRCode = async (req: Request, res: Response): Promise<vo
 
     // Criar o registro com validações
     const qrCode: PixQRCode = {
-      id: uuidv4(),
+      id: uuidv4(), // UUID para garantir IDs únicos
       value: parseFloat(value.toString()), // Garantir que é número
       qrCodeImage: asaasResponse.encodedImage || '',
       qrCodeText: asaasResponse.payload || '',
